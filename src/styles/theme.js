@@ -1,0 +1,17 @@
+export const COLORS = {
+  bgDark: '#0c1424',
+  sidebarBg: '#131c2e',
+  sidebarActive: '#1c283f',
+  tealMain: '#0e766e',
+  tealHover: '#0b5e57',
+  textGray: '#64748b',
+  borderLight: '#cbd5e1',
+  alertRedBg: '#fee2e2',
+  alertRedText: '#ef4444',
+  orangeMain: '#d97706',
+  orangeHover: '#b45309',
+  redMain: '#991b1b',
+  redHover: '#7f1d1d',
+  seatVacant: '#10b981',
+  seatOccupied: '#64748b',
+};
