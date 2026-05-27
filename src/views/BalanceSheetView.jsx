@@ -183,6 +183,12 @@ export default function BalanceSheetView({ members = [] }) {
               setAmount(e.target.value)
             }
             size="small"
+            sx={{
+              bgcolor: '#ffffff',
+              '& .MuiInputBase-root': {
+                height: '42px',
+              }
+            }}
           />
         </Box>
 
@@ -205,6 +211,16 @@ export default function BalanceSheetView({ members = [] }) {
               setPaymentDate(e.target.value)
             }
             size="small"
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{
+              bgcolor: '#ffffff',
+              '& .MuiInputBase-root': {
+                height: '42px',
+                width: '180px',
+              }
+            }}
           />
         </Box>
 
@@ -227,6 +243,7 @@ export default function BalanceSheetView({ members = [] }) {
               textTransform: 'none',
               fontWeight: 'bold',
               px: 4,
+              height: '42px',
             }}
           >
             Update
@@ -240,6 +257,7 @@ export default function BalanceSheetView({ members = [] }) {
               textTransform: 'none',
               fontWeight: 'bold',
               px: 4,
+              height: '42px',
             }}
           >
             Delete Selected
@@ -324,7 +342,7 @@ export default function BalanceSheetView({ members = [] }) {
                   </TableCell>
 
                   <TableCell align="center">
-                    ₹{Number(entry.amount)}
+                    {Number(entry.amount)}
                   </TableCell>
 
                   <TableCell align="center">

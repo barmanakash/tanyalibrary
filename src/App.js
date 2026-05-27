@@ -127,8 +127,8 @@ export default function App() {
   const validateSeat = (value) => {
     if (!value) return 'Seat is required';
     const seatNum = parseInt(value);
-    if (isNaN(seatNum) || seatNum < 1 || seatNum > 34) {
-      return 'Seat number must be between 1 and 34';
+    if (isNaN(seatNum) || seatNum < 1 || seatNum > 50) {
+      return 'Seat number must be between 1 and 50';
     }
     
     // Check if the target seat is already occupied by someone else
@@ -518,7 +518,7 @@ export default function App() {
 
             {/* Seat Field */}
             <Box>
-              <Typography sx={labelStyle}>Assigned Seat Track * (1-34)</Typography>
+              <Typography sx={labelStyle}>Assigned Seat Track * (1-50)</Typography>
               <TextField
                 fullWidth
                 name="seat"

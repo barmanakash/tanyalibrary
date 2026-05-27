@@ -7,7 +7,7 @@ export default function SeatsLayoutView({ members = [] }) {
   const bookedSeats = members.map((member) => Number(member.seat));
 
   // Total seats
-  const totalSeats = 34;
+  const totalSeats = 50;
   const bookedCount = bookedSeats.length;
   const availableCount = totalSeats - bookedCount;
 
