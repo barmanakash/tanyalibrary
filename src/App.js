@@ -37,24 +37,6 @@ export default function App() {
 
   // Dialog State
   const [openForm, setOpenForm] = useState(false);
-
-  // Members Table Data
-  // const [members, setMembers] = useState(() => {
-  //   // Load data from localStorage
-  //   const savedMembers = localStorage.getItem('libraryMembers');
-
-  //   return savedMembers
-  //     ? JSON.parse(savedMembers)
-  //     : [
-  //       {
-  //         firstName: 'Akash',
-  //         lastName: 'Barman',
-  //         phone: '9876543210',
-  //         seat: '12',
-  //         status: 'Active',
-  //       },
-  //     ];
-  // });
   const [members, setMembers] = useState(() => {
     const savedMembers = localStorage.getItem('libraryMembers');
 
@@ -89,39 +71,131 @@ export default function App() {
     status: 'Active',
   });
 
+  // Form Validation Errors
+  const [errors, setErrors] = useState({});
+
+  // Validation Functions
+  const validateFirstName = (value) => {
+    if (!value) return 'First Name is required';
+    if (!/^[a-zA-Z\s]+$/.test(value)) {
+      return 'First Name must contain only alphabetic characters';
+    }
+    return '';
+  };
+
+  const validateLastName = (value) => {
+    if (!value) return 'Last Name is required';
+    if (!/^[a-zA-Z\s]+$/.test(value)) {
+      return 'Last Name must contain only alphabetic characters';
+    }
+    return '';
+  };
+
+  const validateDOB = (value) => {
+    if (!value) return 'Date of Birth is required';
+    const selectedDate = new Date(value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    if (selectedDate.getTime() === today.getTime()) {
+      return 'Date of Birth cannot be today';
+    }
+    if (selectedDate.getFullYear() >= 2010) {
+      return 'Date of Birth must be before 2010';
+    }
+    return '';
+  };
+
+  const validatePhone = (value) => {
+    if (!value) return 'Phone Number is required';
+    if (!/^\d{10}$/.test(value.replace(/\D/g, ''))) {
+      return 'Phone Number must be exactly 10 digits';
+    }
+    return '';
+  };
+
+  const validateSeat = (value) => {
+    if (!value) return 'Seat is required';
+    const seatNum = parseInt(value);
+    if (isNaN(seatNum) || seatNum < 1 || seatNum > 34) {
+      return 'Seat number must be between 1 and 34';
+    }
+    const isBooked = members.some((member) => parseInt(member.seat) === seatNum);
+    if (isBooked) {
+      return 'This seat is already booked. Please select an empty seat.';
+    }
+    return '';
+  };
+
+  const validateAddress = (value) => {
+    if (!value) return 'Address is required';
+    return '';
+  };
+
+  const validateJoiningDate = (value) => {
+    if (!value) return 'Joining Date is required';
+    return '';
+  };
+
   // Open Form
   const handleOpenForm = () => {
     setOpenForm(true);
+    setErrors({});
   };
 
   // Close Form
   const handleCloseForm = () => {
     setOpenForm(false);
+    setErrors({});
   };
 
   // Handle Input Change
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setMemberData({
       ...memberData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+
+    // Real-time validation
+    let error = '';
+    if (name === 'firstName') error = validateFirstName(value);
+    if (name === 'lastName') error = validateLastName(value);
+    if (name === 'dob') error = validateDOB(value);
+    if (name === 'phone') error = validatePhone(value);
+    if (name === 'address') error = validateAddress(value);
+    if (name === 'joiningDate') error = validateJoiningDate(value);
+    if (name === 'seat') error = validateSeat(value);
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error,
+    }));
   };
 
   // Handle Submit
   const handleSubmit = () => {
-    // Validation
-    if (
-      !memberData.firstName ||
-      !memberData.lastName ||
-      !memberData.phone ||
-      !memberData.seat
-    ) {
-      alert('Please fill all required fields');
+    // Validate all fields
+    const newErrors = {
+      firstName: validateFirstName(memberData.firstName),
+      lastName: validateLastName(memberData.lastName),
+      dob: validateDOB(memberData.dob),
+      phone: validatePhone(memberData.phone),
+      address: validateAddress(memberData.address),
+      joiningDate: validateJoiningDate(memberData.joiningDate),
+      seat: validateSeat(memberData.seat),
+    };
+
+    setErrors(newErrors);
+
+    // Check if there are any errors
+    const hasErrors = Object.values(newErrors).some((error) => error !== '');
+    if (hasErrors) {
       return;
     }
 
     // Add New Member
-    // setMembers([...members, memberData]);
     setMembers([
       ...members,
       {
@@ -141,6 +215,8 @@ export default function App() {
       seat: '',
       status: 'Active',
     });
+
+    setErrors({});
 
     // Close Dialog
     setOpenForm(false);
@@ -286,8 +362,14 @@ export default function App() {
                 name="firstName"
                 value={memberData.firstName}
                 onChange={handleChange}
+                error={!!errors.firstName}
                 sx={inputStyle}
               />
+              {errors.firstName && (
+                <Typography sx={{ color: '#dc2626', fontSize: '0.8rem', mt: 0.5 }}>
+                  {errors.firstName}
+                </Typography>
+              )}
             </Box>
 
             {/* Last Name */}
@@ -301,8 +383,14 @@ export default function App() {
                 name="lastName"
                 value={memberData.lastName}
                 onChange={handleChange}
+                error={!!errors.lastName}
                 sx={inputStyle}
               />
+              {errors.lastName && (
+                <Typography sx={{ color: '#dc2626', fontSize: '0.8rem', mt: 0.5 }}>
+                  {errors.lastName}
+                </Typography>
+              )}
             </Box>
 
             {/* Date of Birth */}
@@ -317,8 +405,14 @@ export default function App() {
                 name="dob"
                 value={memberData.dob}
                 onChange={handleChange}
+                error={!!errors.dob}
                 sx={inputStyle}
               />
+              {errors.dob && (
+                <Typography sx={{ color: '#dc2626', fontSize: '0.8rem', mt: 0.5 }}>
+                  {errors.dob}
+                </Typography>
+              )}
             </Box>
 
             {/* Phone Number */}
@@ -332,8 +426,14 @@ export default function App() {
                 name="phone"
                 value={memberData.phone}
                 onChange={handleChange}
+                error={!!errors.phone}
                 sx={inputStyle}
               />
+              {errors.phone && (
+                <Typography sx={{ color: '#dc2626', fontSize: '0.8rem', mt: 0.5 }}>
+                  {errors.phone}
+                </Typography>
+              )}
             </Box>
 
             {/* Address */}
@@ -347,8 +447,14 @@ export default function App() {
                 name="address"
                 value={memberData.address}
                 onChange={handleChange}
+                error={!!errors.address}
                 sx={inputStyle}
               />
+              {errors.address && (
+                <Typography sx={{ color: '#dc2626', fontSize: '0.8rem', mt: 0.5 }}>
+                  {errors.address}
+                </Typography>
+              )}
             </Box>
 
             {/* Joining Date */}
@@ -363,8 +469,14 @@ export default function App() {
                 name="joiningDate"
                 value={memberData.joiningDate}
                 onChange={handleChange}
+                error={!!errors.joiningDate}
                 sx={inputStyle}
               />
+              {errors.joiningDate && (
+                <Typography sx={{ color: '#dc2626', fontSize: '0.8rem', mt: 0.5 }}>
+                  {errors.joiningDate}
+                </Typography>
+              )}
             </Box>
 
             {/* Seat */}
@@ -378,8 +490,14 @@ export default function App() {
                 name="seat"
                 value={memberData.seat}
                 onChange={handleChange}
+                error={!!errors.seat}
                 sx={inputStyle}
               />
+              {errors.seat && (
+                <Typography sx={{ color: '#dc2626', fontSize: '0.8rem', mt: 0.5 }}>
+                  {errors.seat}
+                </Typography>
+              )}
             </Box>
 
             {/* Status */}
