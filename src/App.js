@@ -20,6 +20,7 @@ import {
 import {
   PersonAdd as PersonAddIcon,
   ExitToApp as ExitToAppIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 
 import { COLORS } from './styles/theme';
@@ -31,6 +32,8 @@ import BalanceSheetView from './views/BalanceSheetView';
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState('All Members');
+  const [selectedMemberIndex, setSelectedMemberIndex] = useState(null);
+  const [openRemoveConfirm, setOpenRemoveConfirm] = useState(false);
 
   // Dialog State
   const [openForm, setOpenForm] = useState(false);
@@ -143,6 +146,24 @@ export default function App() {
     setOpenForm(false);
   };
 
+  // Handle Remove Member
+  const handleRemoveMember = () => {
+    if (selectedMemberIndex !== null) {
+      const newMembers = members.filter((_, index) => index !== selectedMemberIndex);
+      setMembers(newMembers);
+      localStorage.setItem('libraryMembers', JSON.stringify(newMembers));
+      setSelectedMemberIndex(null);
+      setOpenRemoveConfirm(false);
+    }
+  };
+
+  // Handle Remove Button Click
+  const handleRemoveClick = () => {
+    if (selectedMemberIndex !== null) {
+      setOpenRemoveConfirm(true);
+    }
+  };
+
   // Login Screen
   if (!isAuthenticated) {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
@@ -158,44 +179,64 @@ export default function App() {
       }}
     >
       {/* Top Navbar */}
-      <Box
-        sx={{
-          height: '60px',
-          bgcolor: COLORS.sidebarBg,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 3,
-          borderBottom: '1px solid #1e293b',
-        }}
-      >
-        <Typography
-          variant="h6"
-          sx={{
-            color: '#ffffff',
-            fontWeight: 'bold',
-            fontSize: '1.1rem',
-          }}
-        >
-          Tanya Library Study Zone
-        </Typography>
+     <Box
+  sx={{
+    height: '60px',
+    bgcolor: COLORS.sidebarBg,
+    display: 'flex',
+    alignItems: 'center',
+    px: 3,
+    gap: 2,
+    borderBottom: '1px solid #1e293b',
+    // Removed justifyContent: "end" from here so text stays left
+  }}
+>
+  <Typography
+    variant="h6"
+    sx={{
+      color: '#ffffff',
+      fontWeight: 'bold',
+      fontSize: '1.1rem',
+    }}
+  >
+    Tanya Library Study Zone
+  </Typography>
 
-        {/* Add Member Button */}
-        <Button
-          variant="contained"
-          startIcon={<PersonAddIcon />}
-          onClick={handleOpenForm}
-          sx={{
-            bgcolor: COLORS.tealMain,
-            '&:hover': { bgcolor: COLORS.tealHover },
-            textTransform: 'none',
-            fontSize: '0.85rem',
-            fontWeight: '600',
-          }}
-        >
-          Add New Member
-        </Button>
-      </Box>
+  {/* Remove Selected Button - added marginLeft: 'auto' to push BOTH buttons to the right */}
+  <Button
+    variant="contained"
+    startIcon={<DeleteIcon />}
+    onClick={handleRemoveClick}
+    disabled={selectedMemberIndex === null}
+    sx={{
+      marginLeft: 'auto', // <-- Pushes this button and everything after it to the right
+      bgcolor: selectedMemberIndex !== null ? '#ef4444' : '#cbd5e1',
+      '&:hover': { bgcolor: selectedMemberIndex !== null ? '#dc2626' : '#cbd5e1' },
+      textTransform: 'none',
+      fontSize: '0.85rem',
+      fontWeight: '600',
+    }}
+  >
+    Remove Selected
+  </Button>
+
+  {/* Add Member Button */}
+  <Button
+    variant="contained"
+    startIcon={<PersonAddIcon />}
+    onClick={handleOpenForm}
+    sx={{
+      // Removed marginLeft: 'auto' from here so it sits right next to the remove button
+      bgcolor: COLORS.tealMain,
+      '&:hover': { bgcolor: COLORS.tealHover },
+      textTransform: 'none',
+      fontSize: '0.85rem',
+      fontWeight: '600',
+    }}
+  >
+    Add New Member
+  </Button>
+</Box>
 
       {/* Add Member Form Dialog */}
       <Dialog
@@ -385,6 +426,46 @@ export default function App() {
         </DialogActions>
       </Dialog>
 
+      {/* Remove Confirmation Dialog */}
+      <Dialog
+        open={openRemoveConfirm}
+        onClose={() => setOpenRemoveConfirm(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#0f172a' }}>
+          Remove Member
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mt: 2, color: '#475569' }}>
+            Are you sure you want to remove <strong>{selectedMemberIndex !== null && (members[selectedMemberIndex].firstName + ' ' + members[selectedMemberIndex].lastName)}</strong>?
+          </Typography>
+          <Typography sx={{ mt: 1.5, fontSize: '0.9rem', color: '#64748b' }}>
+            This will also free the assigned seat and remove associated finance records.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setOpenRemoveConfirm(false)}
+            sx={{ textTransform: 'none', fontWeight: '600' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleRemoveMember}
+            sx={{
+              bgcolor: '#ef4444',
+              '&:hover': { bgcolor: '#dc2626' },
+              textTransform: 'none',
+              fontWeight: 'bold',
+            }}
+          >
+            Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Main Layout */}
       <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
         {/* Sidebar */}
@@ -517,7 +598,16 @@ export default function App() {
 
                   <TableBody>
                     {members.map((member, index) => (
-                      <TableRow key={index}>
+                      <TableRow 
+                        key={index}
+                        onClick={() => setSelectedMemberIndex(index)}
+                        sx={{ 
+                          cursor: 'pointer',
+                          bgcolor: selectedMemberIndex === index ? '#e0f2fe' : 'transparent',
+                          '&:hover': { bgcolor: selectedMemberIndex === index ? '#e0f2fe' : '#f1f5f9' },
+                          transition: '0.1s',
+                        }}
+                      >
                         <TableCell>{member.firstName}</TableCell>
                         <TableCell>{member.lastName}</TableCell>
                         <TableCell>{member.phone}</TableCell>
