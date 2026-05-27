@@ -43,14 +43,13 @@ export default function BalanceSheetView({ members = [] }) {
 
   // Add Entry
   const handleAddEntry = () => {
-
     if (!selectedMember || !amount || !paymentDate) {
       return;
     }
 
     const newEntry = {
       memberName: selectedMember,
-      amount,
+      amount: Number(amount), // Ensure it is treated as a number
       paymentDate,
     };
 
@@ -60,11 +59,11 @@ export default function BalanceSheetView({ members = [] }) {
     setSelectedMember('');
     setAmount('');
     setPaymentDate('');
+    setSelectedIndex(null);
   };
 
   // Delete Entry
   const handleDelete = () => {
-
     if (selectedIndex === null) {
       return;
     }
@@ -74,12 +73,18 @@ export default function BalanceSheetView({ members = [] }) {
     );
 
     setEntries(updated);
-
     setSelectedIndex(null);
   };
 
-  // Total Amount
-  const totalAmount = entries.reduce(
+  // --- Dynamic Calculation Logic Fixes ---
+  
+  // 1. Total Paid (Only for the currently selected member)
+  const selectedMemberTotal = entries
+    .filter((entry) => entry.memberName === selectedMember)
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+
+  // 2. All Members Total (Combined sum of everything)
+  const allMembersTotal = entries.reduce(
     (sum, item) => sum + Number(item.amount),
     0
   );
@@ -133,9 +138,10 @@ export default function BalanceSheetView({ members = [] }) {
 
           <Select
             value={selectedMember}
-            onChange={(e) =>
-              setSelectedMember(e.target.value)
-            }
+            onChange={(e) => {
+              setSelectedMember(e.target.value);
+              setSelectedIndex(null); // Reset selection highlight on change
+            }}
             displayEmpty
             sx={{
               width: '290px',
@@ -171,6 +177,7 @@ export default function BalanceSheetView({ members = [] }) {
           </Typography>
 
           <TextField
+            type="number"
             value={amount}
             onChange={(e) =>
               setAmount(e.target.value)
@@ -252,7 +259,6 @@ export default function BalanceSheetView({ members = [] }) {
 
           <TableHead>
             <TableRow>
-
               <TableCell
                 sx={{
                   fontWeight: 'bold',
@@ -282,57 +288,51 @@ export default function BalanceSheetView({ members = [] }) {
               >
                 Payment Date
               </TableCell>
-
             </TableRow>
           </TableHead>
 
           <TableBody>
+            {entries.map((entry, originalIndex) => {
+              // Determine visibility based on selected filter
+              const isVisible = selectedMember 
+                ? entry.memberName === selectedMember
+                : true;
 
-            {entries
-              .filter((entry) =>
-                selectedMember 
-                  ? entry.memberName === selectedMember
-                  : true
-              )
-              .map((entry, index) => (
+              if (!isVisible) return null;
 
+              return (
                 <TableRow
-                  key={index}
+                  key={originalIndex}
                   hover
-                  onClick={() => setSelectedIndex(index)}
+                  onClick={() => setSelectedIndex(originalIndex)}
                   sx={{
                     cursor: 'pointer',
-
                     bgcolor:
-                      selectedIndex === index
+                      selectedIndex === originalIndex
                         ? '#dbeafe'
                         : 'transparent',
-
                     '&:hover': {
                       bgcolor:
-                        selectedIndex === index
+                        selectedIndex === originalIndex
                           ? '#dbeafe'
                           : '#f8fafc',
                     },
                   }}
                 >
-
                   <TableCell align="center">
                     {entry.memberName}
                   </TableCell>
 
                   <TableCell align="center">
-                    ₹{entry.amount}
+                    ₹{Number(entry.amount)}
                   </TableCell>
 
                   <TableCell align="center">
                     {entry.paymentDate}
                   </TableCell>
-
                 </TableRow>
-
-              ))}
-
+              );
+            })}
           </TableBody>
 
         </Table>
@@ -348,7 +348,6 @@ export default function BalanceSheetView({ members = [] }) {
           gap: 1,
         }}
       >
-
         <Typography
           sx={{
             color: '#0f766e',
@@ -356,7 +355,7 @@ export default function BalanceSheetView({ members = [] }) {
             fontSize: '1.6rem',
           }}
         >
-          Total Paid: ₹{totalAmount}
+          Total Paid: ₹{selectedMemberTotal}
         </Typography>
 
         <Typography
@@ -366,9 +365,8 @@ export default function BalanceSheetView({ members = [] }) {
             fontSize: '1.2rem',
           }}
         >
-          All Members Total: ₹{totalAmount.toFixed(2)}
+          All Members Total: ₹{allMembersTotal.toFixed(2)}
         </Typography>
-
       </Box>
 
     </Box>

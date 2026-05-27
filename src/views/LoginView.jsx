@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography, Alert } from '@mui/material';
 import { COLORS } from '../styles/theme';
-import LibraryGraphic from '../components/LibraryGraphic';
+import TanyaImage from '../assets/library.png';
 
 export default function LoginView({ onLogin }) {
   // Static credentials
@@ -67,7 +67,9 @@ export default function LoginView({ onLogin }) {
             TANYA LIBRARY
           </Typography>
 
-          <LibraryGraphic />
+          <img src={TanyaImage} alt ="tanyalibrary"
+          style={{height:"400px", width:"400px"}}
+          />
 
           <Typography
             variant="caption"
