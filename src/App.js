@@ -15,12 +15,16 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Select,
+  MenuItem,
+  FormControl
 } from '@mui/material';
 
 import {
   PersonAdd as PersonAddIcon,
   ExitToApp as ExitToAppIcon,
   Delete as DeleteIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 
 import { COLORS } from './styles/theme';
@@ -29,52 +33,57 @@ import SeatsLayoutView from './views/SeatsLayoutView';
 import FinanceTrackerView from './views/FinanceTrackerView';
 import BalanceSheetView from './views/BalanceSheetView';
 
+// Helper for initial form state structure
+const initialFormState = {
+  firstName: '',
+  lastName: '',
+  dob: '',
+  phone: '',
+  address: '',
+  joiningDate: '',
+  seat: '',
+  status: 'Active',
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState('All Members');
   const [selectedMemberIndex, setSelectedMemberIndex] = useState(null);
   const [openRemoveConfirm, setOpenRemoveConfirm] = useState(false);
 
-  // Dialog State
+  // Distinguish form submissions between additions vs profile edits
+  const [isEditMode, setIsEditMode] = useState(false);
   const [openForm, setOpenForm] = useState(false);
+  
   const [members, setMembers] = useState(() => {
     const savedMembers = localStorage.getItem('libraryMembers');
-
     return savedMembers
       ? JSON.parse(savedMembers)
       : [
-        {
-          firstName: 'Akash',
-          lastName: 'Barman',
-          phone: '9876543210',
-          seat: '12',
-          status: 'Active',
-          paymentStatus: 'Unpaid',
-        },
-      ];
+          {
+            firstName: 'Akash',
+            lastName: 'Barman',
+            phone: '9876543210',
+            dob: '1999-01-01',
+            address: 'Jabalpur',
+            joiningDate: '2026-01-01',
+            seat: '12',
+            status: 'Active',
+            paymentStatus: 'Unpaid',
+          },
+        ];
   });
 
-  // Save Members to localStorage whenever members change
+  // Keep persistent state synchronized with changes
   useEffect(() => {
     localStorage.setItem('libraryMembers', JSON.stringify(members));
   }, [members]);
 
-  // Form State
-  const [memberData, setMemberData] = useState({
-    firstName: '',
-    lastName: '',
-    dob: '',
-    phone: '',
-    address: '',
-    joiningDate: '',
-    seat: '',
-    status: 'Active',
-  });
-
-  // Form Validation Errors
+  // Form Field Tracking States
+  const [memberData, setMemberData] = useState(initialFormState);
   const [errors, setErrors] = useState({});
 
-  // Validation Functions
+  // Operational Fields Validators
   const validateFirstName = (value) => {
     if (!value) return 'First Name is required';
     if (!/^[a-zA-Z\s]+$/.test(value)) {
@@ -121,8 +130,12 @@ export default function App() {
     if (isNaN(seatNum) || seatNum < 1 || seatNum > 34) {
       return 'Seat number must be between 1 and 34';
     }
-    const isBooked = members.some((member) => parseInt(member.seat) === seatNum);
-    if (isBooked) {
+    
+    // Check if the target seat is already occupied by someone else
+    const isBooked = members.some(
+      (member, idx) => parseInt(member.seat) === seatNum && idx !== selectedMemberIndex && member.status === 'Active'
+    );
+    if (isBooked && memberData.status === 'Active') {
       return 'This seat is already booked. Please select an empty seat.';
     }
     return '';
@@ -138,19 +151,42 @@ export default function App() {
     return '';
   };
 
-  // Open Form
+  // Open Form Handler for adding a fresh record
   const handleOpenForm = () => {
+    setIsEditMode(false);
+    setMemberData(initialFormState);
     setOpenForm(true);
     setErrors({});
   };
 
-  // Close Form
+  // Open Form Handler for mutating a selected record
+  const handleOpenEditForm = () => {
+    if (selectedMemberIndex !== null) {
+      setIsEditMode(true);
+      const targetMember = members[selectedMemberIndex];
+      setMemberData({
+        firstName: targetMember.firstName || '',
+        lastName: targetMember.lastName || '',
+        dob: targetMember.dob || '',
+        phone: targetMember.phone || '',
+        address: targetMember.address || '',
+        joiningDate: targetMember.joiningDate || '',
+        seat: targetMember.seat || '',
+        status: targetMember.status || 'Active',
+      });
+      setOpenForm(true);
+      setErrors({});
+    }
+  };
+
+  // Safe-closing execution
   const handleCloseForm = () => {
     setOpenForm(false);
     setErrors({});
+    setMemberData(initialFormState);
   };
 
-  // Handle Input Change
+  // Interactive UI Change Listeners
   const handleChange = (e) => {
     const { name, value } = e.target;
     setMemberData({
@@ -158,7 +194,6 @@ export default function App() {
       [name]: value,
     });
 
-    // Real-time validation
     let error = '';
     if (name === 'firstName') error = validateFirstName(value);
     if (name === 'lastName') error = validateLastName(value);
@@ -174,9 +209,16 @@ export default function App() {
     }));
   };
 
-  // Handle Submit
+  // Direct state mutation handler dedicated to the dropdown select field
+  const handleStatusChange = (e) => {
+    setMemberData({
+      ...memberData,
+      status: e.target.value
+    });
+  };
+
+  // Central submission hub logic
   const handleSubmit = () => {
-    // Validate all fields
     const newErrors = {
       firstName: validateFirstName(memberData.firstName),
       lastName: validateLastName(memberData.lastName),
@@ -189,58 +231,54 @@ export default function App() {
 
     setErrors(newErrors);
 
-    // Check if there are any errors
     const hasErrors = Object.values(newErrors).some((error) => error !== '');
     if (hasErrors) {
       return;
     }
 
-    // Add New Member
-    setMembers([
-      ...members,
-      {
+    if (isEditMode && selectedMemberIndex !== null) {
+      const updatedMembers = [...members];
+      updatedMembers[selectedMemberIndex] = {
+        ...updatedMembers[selectedMemberIndex],
         ...memberData,
-        paymentStatus: 'Unpaid',
-      },
-    ]);
+      };
+      setMembers(updatedMembers);
+    } else {
+      setMembers([
+        ...members,
+        {
+          ...memberData,
+          paymentStatus: 'Unpaid',
+        },
+      ]);
+    }
 
-    // Reset Form
-    setMemberData({
-      firstName: '',
-      lastName: '',
-      dob: '',
-      phone: '',
-      address: '',
-      joiningDate: '',
-      seat: '',
-      status: 'Active',
-    });
-
+    // Tear down panel states cleanly
+    setMemberData(initialFormState);
     setErrors({});
-
-    // Close Dialog
+    setSelectedMemberIndex(null);
     setOpenForm(false);
   };
 
-  // Handle Remove Member
+  // Deletion logic execution
   const handleRemoveMember = () => {
     if (selectedMemberIndex !== null) {
       const newMembers = members.filter((_, index) => index !== selectedMemberIndex);
       setMembers(newMembers);
-      localStorage.setItem('libraryMembers', JSON.stringify(newMembers));
       setSelectedMemberIndex(null);
       setOpenRemoveConfirm(false);
     }
   };
 
-  // Handle Remove Button Click
   const handleRemoveClick = () => {
     if (selectedMemberIndex !== null) {
       setOpenRemoveConfirm(true);
     }
   };
 
-  // Login Screen
+  // Strict dynamic isolation layer: masks out inactive entities for layouts and financial operations
+  const activeMembersOnly = members.filter((member) => member.status === 'Active');
+
   if (!isAuthenticated) {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }
@@ -254,67 +292,82 @@ export default function App() {
         bgcolor: '#f8fafc',
       }}
     >
-      {/* Top Navbar */}
-     <Box
-  sx={{
-    height: '60px',
-    bgcolor: COLORS.sidebarBg,
-    display: 'flex',
-    alignItems: 'center',
-    px: 3,
-    gap: 2,
-    borderBottom: '1px solid #1e293b',
-    // Removed justifyContent: "end" from here so text stays left
-  }}
->
-  <Typography
-    variant="h6"
-    sx={{
-      color: '#ffffff',
-      fontWeight: 'bold',
-      fontSize: '1.1rem',
-    }}
-  >
-    Tanya Library Study Zone
-  </Typography>
+      {/* Top Navigation Strip */}
+      <Box
+        sx={{
+          height: '60px',
+          bgcolor: COLORS.sidebarBg,
+          display: 'flex',
+          alignItems: 'center',
+          px: 3,
+          gap: 2,
+          borderBottom: '1px solid #1e293b',
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            color: '#ffffff',
+            fontWeight: 'bold',
+            fontSize: '1.1rem',
+          }}
+        >
+          Tanya Library Study Zone
+        </Typography>
 
-  {/* Remove Selected Button - added marginLeft: 'auto' to push BOTH buttons to the right */}
-  <Button
-    variant="contained"
-    startIcon={<DeleteIcon />}
-    onClick={handleRemoveClick}
-    disabled={selectedMemberIndex === null}
-    sx={{
-      marginLeft: 'auto', // <-- Pushes this button and everything after it to the right
-      bgcolor: selectedMemberIndex !== null ? '#ef4444' : '#cbd5e1',
-      '&:hover': { bgcolor: selectedMemberIndex !== null ? '#dc2626' : '#cbd5e1' },
-      textTransform: 'none',
-      fontSize: '0.85rem',
-      fontWeight: '600',
-    }}
-  >
-    Remove Selected
-  </Button>
+        {/* Dynamic Context Update Profile Trigger */}
+        <Button
+          variant="contained"
+          startIcon={<EditIcon />}
+          onClick={handleOpenEditForm}
+          disabled={selectedMemberIndex === null}
+          sx={{
+            marginLeft: 'auto',
+            bgcolor: selectedMemberIndex !== null ? COLORS.tealMain : '#cbd5e1',
+            '&:hover': { bgcolor: selectedMemberIndex !== null ? COLORS.tealHover : '#cbd5e1' },
+            textTransform: 'none',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+          }}
+        >
+          Update Member
+        </Button>
 
-  {/* Add Member Button */}
-  <Button
-    variant="contained"
-    startIcon={<PersonAddIcon />}
-    onClick={handleOpenForm}
-    sx={{
-      // Removed marginLeft: 'auto' from here so it sits right next to the remove button
-      bgcolor: COLORS.tealMain,
-      '&:hover': { bgcolor: COLORS.tealHover },
-      textTransform: 'none',
-      fontSize: '0.85rem',
-      fontWeight: '600',
-    }}
-  >
-    Add New Member
-  </Button>
-</Box>
+        {/* Selected Destruction Controller */}
+        <Button
+          variant="contained"
+          startIcon={<DeleteIcon />}
+          onClick={handleRemoveClick}
+          disabled={selectedMemberIndex === null}
+          sx={{
+            bgcolor: selectedMemberIndex !== null ? '#ef4444' : '#cbd5e1',
+            '&:hover': { bgcolor: selectedMemberIndex !== null ? '#dc2626' : '#cbd5e1' },
+            textTransform: 'none',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+          }}
+        >
+          Remove Selected
+        </Button>
 
-      {/* Add Member Form Dialog */}
+        {/* Registration Creation Link */}
+        <Button
+          variant="contained"
+          startIcon={<PersonAddIcon />}
+          onClick={handleOpenForm}
+          sx={{
+            bgcolor: COLORS.tealMain,
+            '&:hover': { bgcolor: COLORS.tealHover },
+            textTransform: 'none',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+          }}
+        >
+          Add New Member
+        </Button>
+      </Box>
+
+      {/* Shared Adaptive Dialog Wrapper Form */}
       <Dialog
         open={openForm}
         onClose={handleCloseForm}
@@ -335,7 +388,7 @@ export default function App() {
             pb: 0,
           }}
         >
-          Enroll New Member
+          {isEditMode ? 'Update Member Profile' : 'Enroll New Member'}
         </DialogTitle>
 
         <Typography
@@ -353,10 +406,7 @@ export default function App() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {/* First Name */}
             <Box>
-              <Typography sx={labelStyle}>
-                First Name *
-              </Typography>
-
+              <Typography sx={labelStyle}>First Name *</Typography>
               <TextField
                 fullWidth
                 name="firstName"
@@ -374,10 +424,7 @@ export default function App() {
 
             {/* Last Name */}
             <Box>
-              <Typography sx={labelStyle}>
-                Last Name *
-              </Typography>
-
+              <Typography sx={labelStyle}>Last Name *</Typography>
               <TextField
                 fullWidth
                 name="lastName"
@@ -395,10 +442,7 @@ export default function App() {
 
             {/* Date of Birth */}
             <Box>
-              <Typography sx={labelStyle}>
-                Date of Birth * (dd-mm-yyyy)
-              </Typography>
-
+              <Typography sx={labelStyle}>Date of Birth * (dd-mm-yyyy)</Typography>
               <TextField
                 type="date"
                 fullWidth
@@ -406,6 +450,7 @@ export default function App() {
                 value={memberData.dob}
                 onChange={handleChange}
                 error={!!errors.dob}
+                InputLabelProps={{ shrink: true }}
                 sx={inputStyle}
               />
               {errors.dob && (
@@ -417,10 +462,7 @@ export default function App() {
 
             {/* Phone Number */}
             <Box>
-              <Typography sx={labelStyle}>
-                Phone Number * (10 Digits Only)
-              </Typography>
-
+              <Typography sx={labelStyle}>Phone Number * (10 Digits Only)</Typography>
               <TextField
                 fullWidth
                 name="phone"
@@ -438,10 +480,7 @@ export default function App() {
 
             {/* Address */}
             <Box>
-              <Typography sx={labelStyle}>
-                Address Details *
-              </Typography>
-
+              <Typography sx={labelStyle}>Address Details *</Typography>
               <TextField
                 fullWidth
                 name="address"
@@ -459,10 +498,7 @@ export default function App() {
 
             {/* Joining Date */}
             <Box>
-              <Typography sx={labelStyle}>
-                Joining Operational Date *
-              </Typography>
-
+              <Typography sx={labelStyle}>Joining Operational Date *</Typography>
               <TextField
                 type="date"
                 fullWidth
@@ -470,6 +506,7 @@ export default function App() {
                 value={memberData.joiningDate}
                 onChange={handleChange}
                 error={!!errors.joiningDate}
+                InputLabelProps={{ shrink: true }}
                 sx={inputStyle}
               />
               {errors.joiningDate && (
@@ -479,12 +516,9 @@ export default function App() {
               )}
             </Box>
 
-            {/* Seat */}
+            {/* Seat Field */}
             <Box>
-              <Typography sx={labelStyle}>
-                Assigned Seat Track * (1-34)
-              </Typography>
-
+              <Typography sx={labelStyle}>Assigned Seat Track * (1-34)</Typography>
               <TextField
                 fullWidth
                 name="seat"
@@ -500,24 +534,20 @@ export default function App() {
               )}
             </Box>
 
-            {/* Status */}
+            {/* Robust Material UI Menu Dropdown Component Selection */}
             <Box>
-              <Typography sx={labelStyle}>
-                Initial System Status *
-              </Typography>
-
-              <TextField
-                select
-                fullWidth
-                name="status"
-                value={memberData.status}
-                onChange={handleChange}
-                SelectProps={{ native: true }}
-                sx={inputStyle}
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </TextField>
+              <Typography sx={labelStyle}>Initial System Status *</Typography>
+              <FormControl fullWidth sx={inputStyle}>
+                <Select
+                  name="status"
+                  value={memberData.status}
+                  onChange={handleStatusChange}
+                  displayEmpty
+                >
+                  <MenuItem value="Active">Active</MenuItem>
+                  <MenuItem value="Inactive">Inactive</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
           </Box>
         </DialogContent>
@@ -539,12 +569,12 @@ export default function App() {
               fontSize: '1rem',
             }}
           >
-            Commit Registration
+            {isEditMode ? 'Commit Updates' : 'Commit Registration'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Remove Confirmation Dialog */}
+      {/* Destruction Modal Dialog */}
       <Dialog
         open={openRemoveConfirm}
         onClose={() => setOpenRemoveConfirm(false)}
@@ -556,7 +586,12 @@ export default function App() {
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ mt: 2, color: '#475569' }}>
-            Are you sure you want to remove <strong>{selectedMemberIndex !== null && (members[selectedMemberIndex].firstName + ' ' + members[selectedMemberIndex].lastName)}</strong>?
+            Are you sure you want to remove{' '}
+            <strong>
+              {selectedMemberIndex !== null &&
+                members[selectedMemberIndex].firstName + ' ' + members[selectedMemberIndex].lastName}
+            </strong>
+            ?
           </Typography>
           <Typography sx={{ mt: 1.5, fontSize: '0.9rem', color: '#64748b' }}>
             This will also free the assigned seat and remove associated finance records.
@@ -584,9 +619,9 @@ export default function App() {
         </DialogActions>
       </Dialog>
 
-      {/* Main Layout */}
+      {/* Split Window Layout Context */}
       <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-        {/* Sidebar */}
+        {/* Navigation Control Center */}
         <Box
           sx={{
             width: '240px',
@@ -611,28 +646,22 @@ export default function App() {
               NAVIGATION MENU
             </Typography>
 
-            {[
-              'All Members',
-              'Seats Layout',
-              'Finance Tracker',
-              'Balance Sheet',
-            ].map((item) => {
+            {['All Members', 'Seats Layout', 'Finance Tracker', 'Balance Sheet'].map((item) => {
               const isActive = currentView === item;
 
               return (
                 <Box
                   key={item}
-                  onClick={() => setCurrentView(item)}
+                  onClick={() => {
+                    setCurrentView(item);
+                    setSelectedMemberIndex(null); // Clear selections gracefully across switches
+                  }}
                   sx={{
                     px: 3,
                     py: 1.5,
                     color: isActive ? '#ffffff' : '#94a3b8',
-                    bgcolor: isActive
-                      ? COLORS.sidebarActive
-                      : 'transparent',
-                    borderLeft: isActive
-                      ? `4px solid #ffffff`
-                      : '4px solid transparent',
+                    bgcolor: isActive ? COLORS.sidebarActive : 'transparent',
+                    borderLeft: isActive ? `4px solid #ffffff` : '4px solid transparent',
                     cursor: 'pointer',
                     fontWeight: isActive ? '600' : 'normal',
                     fontSize: '0.95rem',
@@ -649,7 +678,7 @@ export default function App() {
             })}
           </Box>
 
-          {/* Logout */}
+          {/* Session Destruction Button */}
           <Box sx={{ p: 1 }}>
             <Button
               variant="contained"
@@ -672,7 +701,7 @@ export default function App() {
           </Box>
         </Box>
 
-        {/* Main Content */}
+        {/* Display Container Engine */}
         <Box sx={{ flexGrow: 1, p: 4, overflowY: 'auto' }}>
           {currentView === 'All Members' && (
             <Box>
@@ -687,42 +716,30 @@ export default function App() {
                 All Members
               </Typography>
 
-              {/* Members Table */}
+              {/* Master Ledger Grid */}
               <TableContainer component={Paper}>
                 <Table>
                   <TableHead>
                     <TableRow sx={{ bgcolor: '#e2e8f0' }}>
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        First Name
-                      </TableCell>
-
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        Last Name
-                      </TableCell>
-
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        Phone
-                      </TableCell>
-
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        Seat
-                      </TableCell>
-
-                      <TableCell sx={{ fontWeight: 'bold' }}>
-                        Status
-                      </TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>First Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Last Name</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Seat</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                     </TableRow>
                   </TableHead>
 
                   <TableBody>
                     {members.map((member, index) => (
-                      <TableRow 
+                      <TableRow
                         key={index}
                         onClick={() => setSelectedMemberIndex(index)}
-                        sx={{ 
+                        sx={{
                           cursor: 'pointer',
                           bgcolor: selectedMemberIndex === index ? '#e0f2fe' : 'transparent',
-                          '&:hover': { bgcolor: selectedMemberIndex === index ? '#e0f2fe' : '#f1f5f9' },
+                          '&:hover': {
+                            bgcolor: selectedMemberIndex === index ? '#e0f2fe' : '#f1f5f9',
+                          },
                           transition: '0.1s',
                         }}
                       >
@@ -730,7 +747,22 @@ export default function App() {
                         <TableCell>{member.lastName}</TableCell>
                         <TableCell>{member.phone}</TableCell>
                         <TableCell>{member.seat}</TableCell>
-                        <TableCell>{member.status}</TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              display: 'inline-block',
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: '4px',
+                              fontSize: '0.85rem',
+                              fontWeight: '600',
+                              bgcolor: member.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                              color: member.status === 'Active' ? '#15803d' : '#b91c1c',
+                            }}
+                          >
+                            {member.status}
+                          </Box>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -738,25 +770,22 @@ export default function App() {
               </TableContainer>
             </Box>
           )}
-          {currentView === 'Seats Layout' && (
-            <SeatsLayoutView members={members} />
-          )}
+
+          {/* Operational Area Injection Zones (Funnels only active profiles) */}
+          {currentView === 'Seats Layout' && <SeatsLayoutView members={activeMembersOnly} />}
+          
           {currentView === 'Finance Tracker' && (
-            <FinanceTrackerView
-              members={members}
-              setMembers={setMembers}
-            />
+            <FinanceTrackerView members={activeMembersOnly} setMembers={setMembers} />
           )}
-          {currentView === 'Balance Sheet' && (
-            <BalanceSheetView members={members} />
-          )}
+          
+          {currentView === 'Balance Sheet' && <BalanceSheetView members={activeMembersOnly} />}
         </Box>
       </Box>
     </Box>
   );
 }
 
-// Common Label Style
+// Global Common Typography Styles
 const labelStyle = {
   mb: 0.7,
   fontWeight: '700',
@@ -764,10 +793,8 @@ const labelStyle = {
   fontSize: '0.95rem',
 };
 
-// Common Input Style
+// Global Input Theme System Configurations
 const inputStyle = {
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '0px',
-    bgcolor: '#fff',
-  },
+  borderRadius: '0px',
+  bgcolor: '#fff',
 };
